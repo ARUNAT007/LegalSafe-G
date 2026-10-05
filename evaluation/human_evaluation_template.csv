@@ -1,0 +1,6 @@
+doc_id,clause_id,original_text,simplified_text,is_meaning_preserved,is_readable,missing_facts,added_facts,overall_quality,notes
+doc1,c1,"The tenant shall pay $500.","Tenant pays $500.",yes,yes,none,none,good,SYNTHETIC
+doc1,c2,"The tenant shall not sublet.","No subletting.",yes,yes,none,none,good,SYNTHETIC
+doc1,c3,"Confidentiality survives termination.","Keep secrets after ending.",yes,yes,none,none,good,SYNTHETIC
+doc1,c4,"Penalty for late payment is 5%.","Late fee 5%.",yes,yes,none,none,good,SYNTHETIC
+doc1,c5,"Governing law is NY.","NY law applies.",yes,yes,none,none,good,SYNTHETIC

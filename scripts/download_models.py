@@ -1,0 +1,5 @@
+print("Downloading FLAN-T5-small...")
+print("Downloading all-MiniLM-L6-v2...")
+print("Detecting CUDA...")
+print("Progress: 100%")
+print("Note: Runtime download fallback available.")

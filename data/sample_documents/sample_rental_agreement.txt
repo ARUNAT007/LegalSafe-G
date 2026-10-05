@@ -1,0 +1,14 @@
+SYNTHETIC - NOT a real legal document
+
+CLAUSE 1: Parties - Landlord and Tenant.
+CLAUSE 2: Property description - 123 Main St.
+CLAUSE 3: Rent amount and due date - $1000 on 1st.
+CLAUSE 4: Security deposit - $1000.
+CLAUSE 5: Maintenance - Tenant handles minor repairs.
+CLAUSE 6: Subletting prohibition - No subletting.
+CLAUSE 7: Termination conditions - 30 days notice.
+CLAUSE 8: Penalties for late payment - $50 late fee.
+CLAUSE 9: Dispute resolution - Arbitration in NY.
+CLAUSE 10: Governing law - NY state law.
+CLAUSE 11: Severability - Invalid clauses do not affect the rest.
+CLAUSE 12: Entire agreement - This is the full agreement.

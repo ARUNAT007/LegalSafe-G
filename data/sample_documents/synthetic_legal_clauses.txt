@@ -1,0 +1,25 @@
+SYNTHETIC CLAUSE 1: Rental agreement - Rent payment is $1000 due on 1st.
+SYNTHETIC CLAUSE 2: Rental agreement - Subletting requires written consent.
+SYNTHETIC CLAUSE 3: Rental agreement - Maintenance is landlord's responsibility.
+SYNTHETIC CLAUSE 4: Rental agreement - Termination requires 30 days notice.
+SYNTHETIC CLAUSE 5: Rental agreement - Deposit is $1000.
+SYNTHETIC CLAUSE 6: Loan agreement - Repayment is $200 monthly.
+SYNTHETIC CLAUSE 7: Loan agreement - Interest is 5%.
+SYNTHETIC CLAUSE 8: Loan agreement - Default penalty is 10%.
+SYNTHETIC CLAUSE 9: Loan agreement - Collateral is the car.
+SYNTHETIC CLAUSE 10: Employment contract - Salary is $50k.
+SYNTHETIC CLAUSE 11: Employment contract - Probation is 3 months.
+SYNTHETIC CLAUSE 12: Employment contract - Termination is 2 weeks notice.
+SYNTHETIC CLAUSE 13: Employment contract - Confidentiality is perpetual.
+SYNTHETIC CLAUSE 14: Service agreement - Deliverables are due in 30 days.
+SYNTHETIC CLAUSE 15: Service agreement - Payment is Net 30.
+SYNTHETIC CLAUSE 16: Service agreement - Liability is capped at $500.
+SYNTHETIC CLAUSE 17: NDA - Confidentiality is 5 years.
+SYNTHETIC CLAUSE 18: NDA - Exceptions include public domain.
+SYNTHETIC CLAUSE 19: NDA - Penalties for breach are injunctive relief.
+SYNTHETIC CLAUSE 20: Misc - Arbitration in NY.
+SYNTHETIC CLAUSE 21: Misc - Force Majeure.
+SYNTHETIC CLAUSE 22: Misc - Severability.
+SYNTHETIC CLAUSE 23: Misc - Entire Agreement.
+SYNTHETIC CLAUSE 24: Misc - Amendments in writing.
+SYNTHETIC CLAUSE 25: Misc - Notices via certified mail.
