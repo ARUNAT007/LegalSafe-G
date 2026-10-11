@@ -129,17 +129,6 @@ class ExtractionService:
 
     def extract(self, clause_id: str, text: str) -> LegalFact:
         """
-        Extract all legal facts from a clause.
-
-        Args:
-            clause_id: Unique identifier for the clause (e.g. 'C001').
-            text: Raw clause text.
-
-        Returns:
-            LegalFact populated with extracted information.
-        """
-    def extract(self, clause_id: str, text: str) -> LegalFact:
-        """
         Extract all legal facts dynamically from a user-uploaded clause.
 
         Args:
@@ -193,12 +182,28 @@ class ExtractionService:
         # Duration & explicit deadlines
         fact.duration = self._extract_duration(text)
         extracted_deadline = self._extract_deadline(text)
+        # Filter metadata / copyright years from dates (e.g. '© European Union, 2025' or standalone '2025')
+        clean_dates = []
+        for d in fact.dates:
+            d_clean = d.strip()
+            # Ignore metadata years like '2025', '© 2025', 'Copyright 2025'
+            if re.match(r'^(?:©|copyright|\d{4}$)', d_clean, re.IGNORECASE) or (len(d_clean) == 4 and d_clean.isdigit()):
+                continue
+            clean_dates.append(d_clean)
+        fact.dates = clean_dates
+
+        # Duration & explicit deadlines
+        fact.duration = self._extract_duration(text)
+        extracted_deadline = self._extract_deadline(text)
         if extracted_deadline:
             fact.deadline = extracted_deadline
         elif fact.duration and not fact.deadline:
             fact.deadline = fact.duration
         elif fact.dates and not fact.deadline:
-            fact.deadline = fact.dates[0]
+            # Only assign date as deadline if clause contains deadline-oriented keywords
+            text_lower_dl = text.lower()
+            if any(kw in text_lower_dl for kw in ['by', 'due', 'expire', 'within', 'before', 'until', 'no later than', 'deadline']):
+                fact.deadline = fact.dates[0]
 
         # ── 5. Frequency ──────────────────────────────────────────────────────
         fact.frequency = self._extract_frequency(text)
@@ -242,16 +247,33 @@ class ExtractionService:
 
     def _extract_entities(self, doc, fact: LegalFact, text: str) -> None:
         """Populate parties, organizations, dates, amount, locations dynamically from text."""
+        # Non-party words to exclude from parties list
+        NON_PARTIES = {
+            'confidentiality', 'agreement', 'proposed transaction', 'test passage',
+            'legalsafe-g', 'section', 'clause', 'effective date', 'confidential information',
+            'test objective', 'required fact', 'disclosure', 'exceptions', 'survival',
+            'information', 'transaction', 'parties', 'party', 'non-public'
+        }
+
+        def _is_valid_party(p_str: str) -> bool:
+            clean = p_str.strip().strip("’'\"sS").lower()
+            if not clean or len(clean) < 3:
+                return False
+            if clean in NON_PARTIES or any(np in clean for np in ['confidentiality and information', 'test passage', 'test objective', 'proposed transaction']):
+                return False
+            return True
+
         # 1. spaCy NER
         for ent in doc.ents:
             if ent.label_ == 'PERSON':
-                if ent.text not in fact.parties:
+                if _is_valid_party(ent.text) and ent.text not in fact.parties:
                     fact.parties.append(ent.text)
             elif ent.label_ == 'ORG':
-                if ent.text not in fact.parties:
-                    fact.parties.append(ent.text)
-                if ent.text not in fact.organizations:
-                    fact.organizations.append(ent.text)
+                if _is_valid_party(ent.text):
+                    if ent.text not in fact.parties:
+                        fact.parties.append(ent.text)
+                    if ent.text not in fact.organizations:
+                        fact.organizations.append(ent.text)
             elif ent.label_ == 'DATE':
                 if ent.text not in fact.dates:
                     fact.dates.append(ent.text)
@@ -268,14 +290,14 @@ class ExtractionService:
             if re.search(pattern, text_lower):
                 # Ensure canonical title-case representation in parties
                 canonical = role.title()
-                if canonical not in fact.parties and role not in fact.parties:
+                if _is_valid_party(canonical) and canonical not in fact.parties and role not in fact.parties:
                     fact.parties.append(canonical)
 
         # 3. Quoted party definitions, e.g., (the "Tenant") or "Company"
         quoted_parties = re.findall(r'["\']([A-Z][a-zA-Z0-9\s]{1,30})["\']', text)
         for qp in quoted_parties:
             clean_qp = qp.strip()
-            if len(clean_qp) > 2 and clean_qp not in fact.parties:
+            if _is_valid_party(clean_qp) and clean_qp not in fact.parties:
                 fact.parties.append(clean_qp)
 
     def _extract_modality(self, text: str) -> Optional[str]:

@@ -13,18 +13,40 @@ def normalize_whitespace(text: str) -> str:
     return text.strip()
 
 def extract_currency_amounts(text: str) -> List[str]:
-    """Extracts currency amounts including INR (Rs, ₹) and international ($)."""
-    # Pattern looks for ₹, Rs, Rs., $, €, £ followed by numbers, commas, decimals
-    pattern = r'(?:₹|Rs\.?|\$|€|£)\s*\d+(?:,\d{3})*(?:\.\d{1,2})?'
+    """Extracts currency amounts including INR (Rs, ₹, INR) and international ($, €, £, USD, EUR, GBP)."""
+    if not text:
+        return []
+    # Pattern captures ₹, Rs., Rs, INR, $, €, £, USD, EUR, GBP with standard and Indian numbering (1,00,000)
+    pattern = r'(?:₹|Rs\.?|INR|\$|€|£|USD|EUR|GBP)\s*\d+(?:,\d{2,3})*(?:\.\d{1,2})?|\b\d+(?:,\d{2,3})*(?:\.\d{1,2})?\s*(?:Rupees|Dollars|Euros|Pounds|INR|USD)\b'
     matches = re.findall(pattern, text, re.IGNORECASE)
     return [m.strip() for m in matches]
 
 def extract_dates(text: str) -> List[str]:
-    """Extracts dates in various formats."""
-    # Simple regex for DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
-    pattern = r'\b(?:\d{1,2}[-/thstndrd\s]+\w+[-/\s]+\d{2,4}|\d{2,4}[-/]\d{1,2}[-/]\d{1,2})\b'
-    matches = re.findall(pattern, text)
-    return [m.strip() for m in matches]
+    """Extracts dates and deadlines in various formats (ISO, Indian, ordinal, month names, relative)."""
+    if not text:
+        return []
+    patterns = [
+        # Standard numeric dates: 15/10/2026, 2026-10-15, 15.10.2026
+        r'\b\d{1,4}[-/\.]\d{1,2}[-/\.]\d{1,4}\b',
+        # Verbal dates: 15th October 2026, October 15, 2026, 15 Oct 2026
+        r'\b\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{2,4}\b',
+        r'\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*|\s+)\d{2,4}\b',
+        # Monthly/Day deadlines: 5th day of each month, 1st of every month
+        r'\b\d{1,2}(?:st|nd|rd|th)?\s+day\s+of\s+(?:each|every|the)\s+month\b',
+        # Relative durations: within 30 days, 15 business days
+        r'\bwithin\s+\d+\s+(?:business\s+)?(?:days?|months?|years?|weeks?|hours?)\b',
+    ]
+    combined_pattern = '|'.join(patterns)
+    matches = re.findall(combined_pattern, text, re.IGNORECASE)
+    # Deduplicate while preserving order
+    seen = set()
+    result = []
+    for m in matches:
+        cleaned = m.strip()
+        if cleaned.lower() not in seen:
+            seen.add(cleaned.lower())
+            result.append(cleaned)
+    return result
 
 def contains_legal_negation(text: str) -> bool:
     """Checks if text contains legal negations like 'notwithstanding', 'without prejudice', etc."""

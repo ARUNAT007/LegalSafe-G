@@ -148,15 +148,19 @@ class ConstraintService:
                     priority='MEDIUM',
                 ))
 
-            # Parties
+            # Parties (deduplicated per clause)
+            seen_parties = set()
             for party in fact.parties:
-                constraints.append(LegalConstraint(
-                    constraint_type='PARTY_PRESERVATION',
-                    value=party,
-                    description=f'You MUST mention the party: {party}',
-                    clause_id=cid,
-                    priority='MEDIUM',
-                ))
+                party_clean = party.strip()
+                if party_clean and party_clean.lower() not in seen_parties:
+                    seen_parties.add(party_clean.lower())
+                    constraints.append(LegalConstraint(
+                        constraint_type='PARTY_PRESERVATION',
+                        value=party_clean,
+                        description=f'You MUST mention the party: {party_clean}',
+                        clause_id=cid,
+                        priority='MEDIUM',
+                    ))
 
         # Sort: HIGH first
         priority_order = {'HIGH': 0, 'MEDIUM': 1, 'LOW': 2}
@@ -165,14 +169,14 @@ class ConstraintService:
 
     def constraints_to_prompt_fragment(self, constraints: List[LegalConstraint]) -> str:
         """
-        Convert constraints to a natural-language instruction block
-        for inclusion in the Transformer prompt.
+        Convert constraints to a clean natural-language instruction block
+        for inclusion in the Transformer prompt without machine tag pollution.
         """
         if not constraints:
             return ''
         lines = ['SPECIFIC CONSTRAINTS FOR THIS CLAUSE (you MUST follow all):']
         for i, c in enumerate(constraints, 1):
-            lines.append(f'{i}. [{c.constraint_type}] {c.description}')
+            lines.append(f'{i}. {c.description}')
         return '\n'.join(lines)
 
     def to_dict_list(self, constraints: List[LegalConstraint]) -> List[Dict[str, Any]]:

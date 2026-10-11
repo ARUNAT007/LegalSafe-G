@@ -1,47 +1,71 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { Scale, CheckCircle2 } from 'lucide-react';
-import Home from './pages/Home';
-import Results from './pages/Results';
-import Evaluation from './pages/Evaluation';
+
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 import Disclaimer from './components/Disclaimer';
+
+import Home from './pages/Home';
+import Analyzer from './pages/Analyzer';
+import Results from './pages/Results';
+import History from './pages/History';
+import Evaluation from './pages/Evaluation';
 
 function App() {
   return (
     <Router>
       <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <Toaster position="top-right" toastOptions={{
-          style: { background: 'var(--surface-color)', color: 'var(--text-primary)', border: '1px solid var(--surface-border)' }
-        }}/>
         
-        <header style={{ padding: '1rem 0', borderBottom: '1px solid var(--surface-border)', background: 'rgba(10, 15, 30, 0.8)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
-          <div className="container flex-between">
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'var(--text-primary)' }}>
-              <Scale size={28} color="var(--accent-primary)" />
-              <span style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em' }}>LegalSafe<span style={{ color: 'var(--accent-secondary)' }}>-G</span></span>
-            </Link>
-            
-            <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-              <Link to="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }} className="nav-link">Home</Link>
-              <Link to="/evaluation" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }} className="nav-link">Evaluation</Link>
-              <div className="badge badge-verified" style={{ marginLeft: '1rem' }}>
-                <CheckCircle2 size={14} />
-                Research Preview
-              </div>
-            </nav>
-          </div>
-        </header>
+        {/* React Hot Toast Notifications */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#ffffff',
+              color: 'var(--text-heading)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: 'var(--shadow-lg)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+            },
+            success: {
+              iconTheme: {
+                primary: 'var(--success)',
+                secondary: '#ffffff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: 'var(--error)',
+                secondary: '#ffffff',
+              },
+            },
+          }}
+        />
 
-        <main style={{ flex: 1, padding: '2rem 0' }}>
+        {/* Navigation Bar */}
+        <Navbar />
+
+        {/* Main Content Area */}
+        <main style={{ flex: 1 }}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/analyzer" element={<Analyzer />} />
             <Route path="/results/:documentId" element={<Results />} />
+            <Route path="/documents" element={<History />} />
             <Route path="/evaluation" element={<Evaluation />} />
           </Routes>
         </main>
 
+        {/* Footer */}
+        <Footer />
+
+        {/* Sticky Legal & Research Disclaimer */}
         <Disclaimer />
+
       </div>
     </Router>
   );

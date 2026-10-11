@@ -15,29 +15,27 @@ class ClauseService:
         if not text:
             return []
             
+        # 1. Normalize linebreaks
+        raw = text.replace('\r\n', '\n')
+        
+        # 2. Split by double newlines or numbered clause headers (e.g., "1.", "Clause 1", "WHEREAS")
+        raw_blocks = re.split(r'\n{2,}|(?<=\n)(?=(?:\d+\.|\bClause\s+\d+|\bSection\s+\d+|\bArticle\s+\d+|WHEREAS,)\s+)', raw)
+        paragraphs = [p.strip() for p in raw_blocks if p.strip()]
+        
         clauses = []
-        
-        # Naive segmentation based on numbered lists (e.g., "1.", "1.1", "Article 1")
-        # Split text into paragraphs first
-        paragraphs = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
-        
         clause_counter = 1
         current_section = "General"
         
         for p in paragraphs:
-            # Check if paragraph looks like a heading
-            if len(p) < 100 and p.isupper():
+            if len(p) < 100 and p.isupper() and not p.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')):
                 current_section = p
                 continue
                 
-            # Check if paragraph starts with a number
-            match = re.match(r'^((?:\d+\.)+\d*|Article\s+\d+|Section\s+\d+)\s*(.*)', p, re.IGNORECASE)
+            match = re.match(r'^((?:\d+\.)+\d*|Article\s+\d+|Section\s+\d+|Clause\s+\d+)\s*(.*)', p, re.IGNORECASE | re.DOTALL)
             
             if match:
                 clause_id = match.group(1).strip()
-                content = match.group(2).strip()
-                if not content:
-                    content = p # Fallback
+                content = p
             else:
                 clause_id = f"clause_{clause_counter}"
                 content = p

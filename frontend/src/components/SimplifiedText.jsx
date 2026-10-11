@@ -1,147 +1,183 @@
 import React, { useState } from 'react';
-import { CheckCircle2, AlertTriangle, ShieldAlert, Copy, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, ShieldAlert, Copy, RefreshCw, ChevronDown, ChevronUp, Check, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SimplifiedText = ({ clauses }) => {
-  const handleRegenerate = (id) => {
-    toast.error(`Regeneration currently only available in backend API.`);
+  const [copiedAll, setCopiedAll] = useState(false);
+
+  const handleCopyAll = () => {
+    if (!clauses) return;
+    const fullText = clauses
+      .map((c, i) => `Clause ${i + 1}:\n${c.simplified_text_final || c.simplified_text_constrained || c.original_text}`)
+      .join('\n\n');
+    navigator.clipboard.writeText(fullText);
+    setCopiedAll(true);
+    toast.success('Copied full simplified document to clipboard');
+    setTimeout(() => setCopiedAll(false), 2000);
   };
 
   if (!clauses || clauses.length === 0) {
-    return <p style={{ color: 'var(--text-secondary)' }}>No clauses available.</p>;
+    return <p style={{ color: 'var(--text-muted)' }}>No simplified clauses available.</p>;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Verified Simplification</h2>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <span className="badge badge-verified"><CheckCircle2 size={12}/> VERIFIED</span>
-          <span className="badge badge-warning"><AlertTriangle size={12}/> WARNING</span>
-          <span className="badge badge-review"><ShieldAlert size={12}/> REVIEW</span>
+      
+      {/* Panel Top Header Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-heading)' }}>
+            Plain-Language Version
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+            Simplified legal clauses verified for legal fact preservation.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button onClick={handleCopyAll} className="btn btn-secondary btn-sm">
+            {copiedAll ? <Check size={14} color="var(--success)" /> : <Copy size={14} />}
+            {copiedAll ? 'Copied' : 'Copy All Clauses'}
+          </button>
         </div>
       </div>
-      
-      {clauses.map((clause, idx) => {
-        // Map backend API keys to component expected keys
-        const mappedClause = {
-          id: clause.clause_id,
-          status: clause.final_status || (clause.verification?.graph_comparison_status === 'MATCH' ? 'VERIFIED' : 'PENDING'),
-          simplified: clause.simplified_text_final || clause.simplified_text_constrained || clause.original_text,
-          original: clause.original_text,
-          regenCount: 0,
-          warningMsg: clause.verification?.mismatches?.length > 0 
-            ? `Detected ${clause.verification.mismatches.length} potential mismatches.` 
-            : null
-        };
-        return (
-          <ClauseCard 
-            key={mappedClause.id || idx} 
-            clause={mappedClause} 
-            index={idx + 1} 
-            onRegenerate={() => handleRegenerate(mappedClause.id)} 
-          />
-        );
-      })}
+
+      {/* Clause Cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {clauses.map((clause, idx) => {
+          const status = clause.final_status || (clause.verification?.graph_comparison_status === 'MATCH' ? 'VERIFIED' : 'WARNING');
+          const simplified = clause.simplified_text_final || clause.simplified_text_constrained || clause.original_text;
+          const original = clause.original_text;
+          const warningMsg = clause.verification?.mismatches?.length > 0
+            ? `Detected ${clause.verification.mismatches.length} potential fact mismatches.`
+            : null;
+
+          return (
+            <ClauseCard
+              key={clause.clause_id || idx}
+              clause={{ id: clause.clause_id, status, simplified, original, warningMsg }}
+              index={idx + 1}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 };
 
-const ClauseCard = ({ clause, index, onRegenerate }) => {
+const ClauseCard = ({ clause, index }) => {
   const [expanded, setExpanded] = useState(false);
-  
-  const getStatusColor = (status) => {
-    if (status === 'VERIFIED') return 'var(--success)';
-    if (status === 'WARNING') return 'var(--warning)';
-    if (status === 'REVIEW') return 'var(--error)';
-    return 'var(--text-secondary)';
+  const [copied, setCopied] = useState(false);
+
+  const getStatusBadge = (status) => {
+    if (status === 'REGENERATED_AND_VERIFIED') return <span className="badge badge-verified"><RefreshCw size={12} className="spin-slow" /> REGENERATED & VERIFIED</span>;
+    if (status === 'VERIFIED') return <span className="badge badge-verified"><CheckCircle2 size={12} /> VERIFIED</span>;
+    if (status === 'WARNING') return <span className="badge badge-warning"><AlertTriangle size={12} /> WARNING</span>;
+    return <span className="badge badge-review"><ShieldAlert size={12} /> HUMAN REVIEW</span>;
   };
 
-  const getStatusIcon = (status) => {
-    if (status === 'VERIFIED') return <CheckCircle2 size={16} color={getStatusColor(status)} />;
-    if (status === 'WARNING') return <AlertTriangle size={16} color={getStatusColor(status)} />;
-    if (status === 'REVIEW') return <ShieldAlert size={16} color={getStatusColor(status)} />;
-    return null;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(clause.simplified);
+    setCopied(true);
+    toast.success(`Copied Clause ${index}`);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div style={{ 
-      background: 'rgba(0,0,0,0.2)', 
-      border: `1px solid ${getStatusColor(clause.status)}`, 
-      borderRadius: 'var(--radius-md)', 
-      padding: '1.5rem',
-      position: 'relative'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ 
-            width: '28px', height: '28px', borderRadius: '50%', 
-            background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '0.85rem', fontWeight: 'bold'
+    <div className="saas-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      
+      {/* Header info */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            width: '26px',
+            height: '26px',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--brand-50)',
+            color: 'var(--brand-600)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.8rem',
+            fontWeight: 800
           }}>
             {index}
           </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {getStatusIcon(clause.status)}
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: getStatusColor(clause.status) }}>{clause.status}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>ID: {clause.id}</span>
+            {getStatusBadge(clause.status)}
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Clause {clause.id}</span>
           </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {clause.regenCount > 0 && (
-            <span className="tag" style={{ background: 'rgba(108, 99, 255, 0.1)', color: 'var(--accent-primary)' }}>
-              Regen: {clause.regenCount}
-            </span>
-          )}
-          <button 
-            className="btn btn-secondary" 
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-            onClick={() => {
-              navigator.clipboard.writeText(clause.simplified);
-              toast.success('Copied to clipboard');
-            }}
-          >
-            <Copy size={14} />
-          </button>
-        </div>
+
+        <button onClick={handleCopy} className="btn btn-ghost btn-sm" title="Copy clause text">
+          {copied ? <Check size={14} color="var(--success)" /> : <Copy size={14} />}
+          <span style={{ fontSize: '0.8rem' }}>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
       </div>
 
-      <div style={{ fontSize: '1.1rem', lineHeight: 1.6, marginBottom: '1rem' }}>
+      {/* Main Simplified Text */}
+      <div style={{
+        fontSize: '1.05rem',
+        lineHeight: 1.6,
+        fontWeight: 600,
+        color: 'var(--text-heading)',
+        backgroundColor: 'var(--bg-subtle)',
+        padding: '1.15rem 1.25rem',
+        borderRadius: 'var(--radius-sm)',
+        borderLeft: '4px solid var(--brand-600)'
+      }}>
         {clause.simplified}
       </div>
 
+      {/* Warning Alert if Mismatches */}
       {clause.warningMsg && (
-        <div style={{ background: 'rgba(255, 179, 71, 0.1)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', color: 'var(--warning)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <AlertTriangle size={14} /> {clause.warningMsg}
+        <div style={{
+          backgroundColor: 'var(--warning-bg)',
+          border: '1px solid var(--warning-border)',
+          padding: '0.65rem 0.9rem',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: '0.85rem',
+          color: 'var(--warning)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <AlertTriangle size={15} />
+          {clause.warningMsg}
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
-        <button 
-          style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}
+      {/* Toggle Original Text */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem' }}>
+        <button
           onClick={() => setExpanded(!expanded)}
+          className="btn btn-ghost btn-sm"
+          style={{ padding: '0.25rem 0.5rem' }}
         >
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          {expanded ? 'Hide Original' : 'Show Original'}
+          {expanded ? 'Hide Original Clause' : 'Compare Original Legal Clause'}
         </button>
-        
-        {clause.status !== 'VERIFIED' && (
-          <button 
-            className="btn btn-secondary" 
-            style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem', borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
-            onClick={onRegenerate}
-          >
-            <RefreshCw size={14} /> Regenerate
-          </button>
-        )}
       </div>
 
       {expanded && (
-        <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-          {clause.original}
+        <div style={{
+          padding: '1rem 1.15rem',
+          backgroundColor: '#ffffff',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: '0.875rem',
+          color: 'var(--text-muted)',
+          fontStyle: 'italic',
+          lineHeight: 1.5
+        }}>
+          <span style={{ fontWeight: 700, fontStyle: 'normal', color: 'var(--text-heading)', display: 'block', fontSize: '0.75rem', uppercase: 'true', marginBottom: '0.25rem' }}>
+            Original Text:
+          </span>
+          "{clause.original}"
         </div>
       )}
+
     </div>
   );
 };

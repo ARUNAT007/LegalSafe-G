@@ -11,8 +11,18 @@ const LegalFacts = ({ clauses }) => {
     let factId = 0;
     clauses.forEach((c) => {
       const cFacts = c.original_facts || {};
-      const sourceText = c.original_text || cFacts.source_text || "";
+      const fullSource = c.original_text || cFacts.source_text || "";
       
+      const getFocusedSpan = (text, query) => {
+        if (!text) return "";
+        if (!query || text.length <= 150) return text;
+        const idx = text.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return text.length > 150 ? text.slice(0, 147) + "..." : text;
+        const start = Math.max(0, idx - 40);
+        const end = Math.min(text.length, idx + query.length + 60);
+        return (start > 0 ? "..." : "") + text.slice(start, end).trim() + (end < text.length ? "..." : "");
+      };
+
       const addFact = (type, subtype, value, extra = {}) => {
         if (value) {
           facts.push({
@@ -21,7 +31,7 @@ const LegalFacts = ({ clauses }) => {
             subtype,
             value,
             clauseId: c.clause_id,
-            sourceText,
+            sourceText: getFocusedSpan(fullSource, value),
             ...extra
           });
         }

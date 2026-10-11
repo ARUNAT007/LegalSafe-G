@@ -1,19 +1,11 @@
-/**
- * Results page — displays the full LegalSafe-G pipeline output.
- *
- * Route: /results/:resultId
- *
- * Fetches the stored result from GET /api/result/:resultId,
- * then renders tabbed panels for all output sections.
- */
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   Download, AlertCircle, FileText, ArrowLeft,
   BookOpen, BarChart2, Network, ShieldCheck, AlertTriangle, BookMarked,
+  Sparkles, CheckCircle2, Copy, Layers, Cpu
 } from 'lucide-react';
 
 import { getResult } from '../services/api';
@@ -24,19 +16,21 @@ import SimplifiedText from '../components/SimplifiedText';
 import LegalFacts from '../components/LegalFacts';
 import FactGraph from '../components/FactGraph';
 import MismatchPanel from '../components/MismatchPanel';
+import LoadingDashboard from '../components/common/LoadingSkeleton';
+import ErrorState from '../components/common/ErrorState';
 
 const TABS = [
-  { id: 'simplified',  label: 'Simplified',     Icon: BookOpen },
-  { id: 'original',    label: 'Original vs Simplified', Icon: BookMarked },
-  { id: 'facts',       label: 'Legal Facts',    Icon: BarChart2 },
-  { id: 'graph',       label: 'Fact Graph',     Icon: Network },
-  { id: 'verification',label: 'Verification',   Icon: ShieldCheck },
-  { id: 'mismatches',  label: 'Mismatches',     Icon: AlertTriangle },
-  { id: 'terms',       label: 'Legal Terms',    Icon: BookOpen },
+  { id: 'simplified',   label: 'Plain Language',   Icon: BookOpen },
+  { id: 'original',     label: 'Original vs Simplified', Icon: BookMarked },
+  { id: 'facts',        label: 'Extracted Legal Facts', Icon: BarChart2 },
+  { id: 'graph',        label: 'Legal Fact Graph', Icon: Network },
+  { id: 'verification', label: 'Verification Audit', Icon: ShieldCheck },
+  { id: 'mismatches',   label: 'Fact Mismatches', Icon: AlertTriangle },
+  { id: 'terms',        label: 'Legal Glossary', Icon: BookOpen },
 ];
 
 const Results = () => {
-  const { documentId: resultId } = useParams(); // URL param is named documentId but holds resultId
+  const { documentId: resultId } = useParams();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('simplified');
@@ -65,92 +59,145 @@ const Results = () => {
     if (!result) return;
     toast.promise(
       downloadResultPDF(result),
-      { loading: 'Generating PDF…', success: 'PDF downloaded!', error: 'PDF generation failed' }
+      { loading: 'Generating structured PDF report...', success: 'PDF downloaded!', error: 'PDF generation failed' }
     );
   };
 
-  // ── Loading skeleton ────────────────────────────────────────────────────
-
   if (loading) {
     return (
-      <div className="container" style={{ padding: '2rem 0' }}>
-        <div className="skeleton" style={{ height: '48px', width: '200px', marginBottom: '2rem' }} />
-        <div className="skeleton" style={{ height: '160px', marginBottom: '1.5rem' }} />
-        <div className="skeleton" style={{ height: '56px', marginBottom: '1.5rem' }} />
-        <div className="skeleton" style={{ height: '400px' }} />
+      <div className="container" style={{ padding: '2rem 1.5rem' }}>
+        <LoadingDashboard />
       </div>
     );
   }
 
-  // ── Error state ─────────────────────────────────────────────────────────
-
   if (error) {
     return (
-      <div className="container flex-center" style={{ height: '60vh', flexDirection: 'column', gap: '1.5rem' }}>
-        <AlertCircle size={56} color="var(--error)" />
-        <h2 style={{ textAlign: 'center' }}>{error}</h2>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-primary" onClick={fetchResult}>Retry</button>
-          <button className="btn btn-secondary" onClick={() => navigate('/')}>
-            <ArrowLeft size={16} /> Back to Home
-          </button>
-        </div>
+      <div className="container" style={{ padding: '3rem 1.5rem', maxWidth: '640px', margin: '0 auto' }}>
+        <ErrorState
+          title="Result Not Found"
+          message={error}
+          onRetry={fetchResult}
+        />
       </div>
     );
   }
 
   if (!result) return null;
 
-  // ── Build summary for VerificationStatus ────────────────────────────────
   const verSummary = result.verification_summary || {};
   const clauses = result.clauses || [];
   const allMismatches = result.all_mismatches || [];
   const glossary = result.glossary || [];
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // Derive metrics
+  const score = verSummary.average_score ? Math.round(verSummary.average_score * 100) : 100;
+  const factCount = clauses.reduce((acc, c) => {
+    const orig = c.original_facts || {};
+    return acc + (orig.parties?.length || 0) + (orig.subject ? 1 : 0) + (orig.action ? 1 : 0) + (orig.amount ? 1 : 0) + (orig.deadline ? 1 : 0);
+  }, 0);
 
   return (
     <motion.div
       className="container animate-slide-up"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.4 }}
+      style={{ padding: '2rem 1.5rem 5rem' }}
     >
-      {/* Header */}
-      <div className="flex-between" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      
+      {/* Top Header Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2rem' }}>
         <div>
-          <button
-            className="btn btn-secondary"
-            onClick={() => navigate('/')}
-            style={{ marginBottom: '0.75rem', fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
-          >
-            <ArrowLeft size={14} /> Back
-          </button>
-          <h1 className="section-title" style={{ margin: 0 }}>
-            <FileText color="var(--accent-primary)" />
-            Analysis Results
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <Link to="/analyzer" className="btn btn-secondary btn-sm" style={{ padding: '0.35rem 0.65rem' }}>
+              <ArrowLeft size={14} /> Back
+            </Link>
+            <span className="badge badge-brand">Analysis Results</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              ID: {result.result_id}
+            </span>
+          </div>
+
+          <h1 className="heading-lg" style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <FileText color="var(--brand-600)" size={28} />
+            {result.filename || 'Document_Analysis.pdf'}
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-            {result.filename} · {clauses.length} clause{clauses.length !== 1 ? 's' : ''}
-            · Mode: <strong>{result.mode}</strong>
+
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            Analyzed {clauses.length} clause{clauses.length !== 1 ? 's' : ''} • Processing Mode: <strong style={{ color: 'var(--text-heading)', textTransform: 'capitalize' }}>{result.mode}</strong>
           </p>
         </div>
-        <button className="btn btn-secondary" onClick={handleExport}>
-          <Download size={16} /> Download PDF
-        </button>
+
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn btn-brand" onClick={handleExport}>
+            <Download size={16} /> Export PDF Report
+          </button>
+        </div>
       </div>
 
-      {/* Verification status always visible at top */}
-      <VerificationStatus summary={verSummary} />
+      {/* Top Summary Metrics Cards (4 Stat Grid) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        
+        <div className="saas-card" style={{ padding: '1.25rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.04em' }}>
+            Extracted Legal Facts
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--brand-600)' }}>
+            {factCount} Facts
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+            Entities, obligations, deadlines
+          </div>
+        </div>
 
-      {/* Tabbed content */}
-      <div className="glass-card" style={{ marginTop: '2rem', padding: 0, overflow: 'hidden' }}>
-        {/* Tab bar */}
+        <div className="saas-card" style={{ padding: '1.25rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.04em' }}>
+            Verification Status
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: allMismatches.length === 0 ? 'var(--success)' : 'var(--warning)' }}>
+            {allMismatches.length === 0 ? 'VERIFIED' : 'WARNINGS'}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+            {allMismatches.length === 0 ? '0 fact mismatches detected' : `${allMismatches.length} potential fact mismatch(es)`}
+          </div>
+        </div>
+
+        <div className="saas-card" style={{ padding: '1.25rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.04em' }}>
+            Meaning Preservation
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-heading)' }}>
+            {score}%
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+            NetworkX graph alignment score
+          </div>
+        </div>
+
+        <div className="saas-card" style={{ padding: '1.25rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.04em' }}>
+            Clauses Processed
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-heading)' }}>
+            {clauses.length} Clauses
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+            Constraint-guided LLM
+          </div>
+        </div>
+
+      </div>
+
+      {/* Main Tabbed Container */}
+      <div className="saas-card" style={{ padding: 0, overflow: 'hidden' }}>
+        
+        {/* Tab Navigation Header */}
         <div style={{
-          display: 'flex', flexWrap: 'wrap',
-          borderBottom: '1px solid var(--surface-border)',
-          background: 'rgba(0,0,0,0.2)',
-          overflowX: 'auto',
+          display: 'flex',
+          backgroundColor: 'var(--bg-subtle)',
+          borderBottom: '1px solid var(--border-subtle)',
+          overflowX: 'auto'
         }}>
           {TABS.map(({ id, label, Icon }) => {
             const isActive = activeTab === id;
@@ -159,28 +206,31 @@ const Results = () => {
                 key={id}
                 onClick={() => setActiveTab(id)}
                 style={{
-                  padding: '0.9rem 1.25rem',
-                  background: isActive ? 'rgba(108,99,255,0.1)' : 'transparent',
+                  padding: '1rem 1.35rem',
                   border: 'none',
-                  borderBottom: isActive ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  fontWeight: isActive ? 600 : 400,
+                  borderBottom: isActive ? '3px solid var(--brand-600)' : '3px solid transparent',
+                  backgroundColor: isActive ? '#ffffff' : 'transparent',
+                  color: isActive ? 'var(--brand-600)' : 'var(--text-muted)',
+                  fontWeight: isActive ? 700 : 500,
                   fontSize: '0.875rem',
-                  transition: 'all 0.2s',
-                  outline: 'none',
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
+                  gap: '0.5rem',
                   whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
                 }}
               >
-                <Icon size={14} />
+                <Icon size={16} color={isActive ? 'var(--brand-600)' : 'var(--text-muted)'} />
                 {label}
                 {id === 'mismatches' && allMismatches.length > 0 && (
                   <span style={{
-                    background: 'var(--error)', color: 'white',
-                    borderRadius: '9999px', padding: '0 6px', fontSize: '0.7rem',
+                    backgroundColor: 'var(--error)',
+                    color: '#ffffff',
+                    borderRadius: '9999px',
+                    padding: '0.1rem 0.45rem',
+                    fontSize: '0.7rem',
+                    fontWeight: 700
                   }}>
                     {allMismatches.length}
                   </span>
@@ -190,8 +240,8 @@ const Results = () => {
           })}
         </div>
 
-        {/* Tab panels */}
-        <div style={{ padding: '1.5rem' }}>
+        {/* Tab Content Panels */}
+        <div style={{ padding: '2rem 1.75rem' }}>
           {activeTab === 'simplified'   && <SimplifiedText clauses={clauses} />}
           {activeTab === 'original'     && <DocumentViewer clauses={clauses} />}
           {activeTab === 'facts'        && <LegalFacts clauses={clauses} />}
@@ -200,47 +250,42 @@ const Results = () => {
           {activeTab === 'mismatches'   && <MismatchPanel mismatches={allMismatches} />}
           {activeTab === 'terms'        && <GlossaryPanel glossary={glossary} />}
         </div>
+
       </div>
 
-      {/* Disclaimer footer */}
-      <div style={{
-        marginTop: '2rem', padding: '1rem',
-        background: 'rgba(255,179,71,0.08)',
-        border: '1px solid rgba(255,179,71,0.2)',
-        borderRadius: 'var(--radius-sm)',
-        fontSize: '0.8rem',
-        color: 'var(--text-secondary)',
-      }}>
-        ⚠️ {result.disclaimer}
-      </div>
     </motion.div>
   );
 };
 
-// ── Glossary panel (inline for simplicity) ─────────────────────────────────
-
+// Inline Glossary Panel
 const GlossaryPanel = ({ glossary = [] }) => {
   if (glossary.length === 0) {
     return (
-      <div className="flex-center" style={{ flexDirection: 'column', gap: '1rem', padding: '3rem' }}>
-        <BookOpen size={40} color="var(--text-secondary)" />
-        <p style={{ color: 'var(--text-secondary)' }}>No difficult legal terms detected in the simplified output.</p>
+      <div className="flex-center" style={{ flexDirection: 'column', gap: '1rem', padding: '3rem 0', textAlign: 'center' }}>
+        <BookOpen size={40} color="var(--text-muted)" />
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          No complex legal jargon detected requiring glossary explanations.
+        </p>
       </div>
     );
   }
 
   return (
     <div>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-        The following legal terms were detected in the simplified text and may need further clarification:
+      <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-heading)' }}>
+        Easy-Term Explanations
+      </h3>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+        Legal terms extracted from the document with plain English definitions:
       </p>
-      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
         {glossary.map((item, idx) => (
-          <div key={idx} className="glass-card" style={{ padding: '1rem' }}>
-            <p style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--accent-secondary)' }}>
+          <div key={idx} className="saas-card" style={{ padding: '1.25rem' }}>
+            <h4 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.35rem', color: 'var(--brand-600)' }}>
               {item.term}
-            </p>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6 }}>
+            </h4>
+            <p style={{ color: 'var(--text-body)', fontSize: '0.875rem', lineHeight: 1.5, margin: 0 }}>
               {item.explanation}
             </p>
           </div>

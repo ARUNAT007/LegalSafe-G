@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, Download, CheckCircle2, ArrowRight } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ArrowRight, ShieldCheck, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const MismatchPanel = ({ mismatches }) => {
@@ -7,96 +7,133 @@ const MismatchPanel = ({ mismatches }) => {
 
   if (!mismatches || mismatches.length === 0) {
     return (
-      <div className="flex-center" style={{ flexDirection: 'column', padding: '4rem 0', gap: '1rem' }}>
-        <CheckCircle2 size={64} color="var(--success)" />
-        <h3 style={{ color: 'var(--success)' }}>Zero Mismatches Found</h3>
-        <p style={{ color: 'var(--text-secondary)' }}>The generated simplification perfectly aligns with the extracted legal facts.</p>
+      <div className="saas-card flex-center" style={{ flexDirection: 'column', padding: '3.5rem 2rem', textAlign: 'center' }}>
+        <div style={{
+          width: '64px',
+          height: '64px',
+          borderRadius: 'var(--radius-full)',
+          backgroundColor: 'var(--success-bg)',
+          color: 'var(--success)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '1.25rem',
+          border: '1px solid var(--success-border)'
+        }}>
+          <ShieldCheck size={36} />
+        </div>
+
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--success)', marginBottom: '0.5rem' }}>
+          Zero Legal Mismatches Detected
+        </h3>
+        <p style={{ color: 'var(--text-muted)', maxWidth: '480px', fontSize: '0.9rem', lineHeight: 1.6 }}>
+          Every financial amount, date, party, obligation, and negation extracted from the original document is 100% preserved in the plain-language version.
+        </p>
       </div>
     );
   }
 
-  const getTypeColor = (severity) => {
-    return severity === 'high' ? 'var(--error)' : 'var(--warning)';
-  };
-
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-          <AlertCircle color="var(--warning)" />
-          Identified Discrepancies
-        </h3>
-        <button className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-          <Download size={14} /> Export CSV
-        </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertCircle color="var(--warning)" size={20} />
+            Identified Fact Discrepancies ({mismatches.length})
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+            List of facts that were altered or omitted during simplification.
+          </p>
+        </div>
       </div>
 
+      {/* Mismatch Items */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {mismatches.map((m, idx) => {
           const id = `m_${idx}`;
-          const severity = m.type?.includes('OMISSION') || m.type?.includes('ADDED') ? 'warning' : 'high';
+          const isHigh = !m.type?.includes('OMISSION') && !m.type?.includes('ADDED');
           const typeName = (m.type || 'UNKNOWN').replace(/_/g, ' ');
-          
+
           return (
-          <div 
-            key={id} 
-            style={{ 
-              border: `1px solid ${expandedId === id ? getTypeColor(severity) : 'var(--surface-border)'}`,
-              borderRadius: 'var(--radius-sm)',
-              overflow: 'hidden',
-              transition: 'border-color 0.2s'
-            }}
-          >
-            <div 
-              style={{ 
-                padding: '1rem 1.5rem', 
-                background: expandedId === id ? `rgba(${severity === 'high' ? '255,107,107' : '255,179,71'}, 0.05)` : 'rgba(0,0,0,0.2)',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                cursor: 'pointer'
+            <div
+              key={id}
+              className="saas-card"
+              style={{
+                padding: '0',
+                border: expandedId === id ? `1px solid ${isHigh ? 'var(--error)' : 'var(--warning)'}` : '1px solid var(--border-subtle)',
+                overflow: 'hidden'
               }}
-              onClick={() => setExpandedId(expandedId === id ? null : id)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span className={`badge ${severity === 'high' ? 'badge-review' : 'badge-warning'}`}>
-                  {typeName}
-                </span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Clause {m.clause_id}</span>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ background: 'rgba(0, 200, 150, 0.1)', color: 'var(--success)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>{m.original || 'None'}</span>
-                  <ArrowRight size={14} color="var(--text-secondary)" />
-                  <span style={{ background: 'rgba(255, 107, 107, 0.1)', color: 'var(--error)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>{m.generated || 'None'}</span>
-                </div>
-              </div>
-            </div>
-            
-            {expandedId === id && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                style={{ padding: '1.5rem', background: 'var(--bg-color)', borderTop: '1px solid var(--surface-border)' }}
+              <div
+                style={{
+                  padding: '1rem 1.25rem',
+                  backgroundColor: expandedId === id ? (isHigh ? 'var(--error-bg)' : 'var(--warning-bg)') : '#ffffff',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  flexWrap: 'wrap',
+                  gap: '1rem'
+                }}
+                onClick={() => setExpandedId(expandedId === id ? null : id)}
               >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                  <div>
-                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Original Extraction</h4>
-                    <p style={{ fontSize: '0.9rem', lineHeight: 1.6, background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: 'var(--radius-sm)' }}>
-                      {m.original || '(No original fact)'}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Generated Extraction</h4>
-                    <p style={{ fontSize: '0.9rem', lineHeight: 1.6, background: 'rgba(255,107,107,0.05)', padding: '1rem', borderRadius: 'var(--radius-sm)' }}>
-                      {m.generated || '(Omitted in generation)'}
-                    </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span className={`badge ${isHigh ? 'badge-review' : 'badge-warning'}`}>
+                    {typeName}
+                  </span>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    Clause {m.clause_id}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
+                    <span style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 600 }}>
+                      Original: {m.original || 'None'}
+                    </span>
+                    <ArrowRight size={14} color="var(--text-muted)" />
+                    <span style={{ backgroundColor: 'var(--error-bg)', color: 'var(--error)', border: '1px solid var(--error-border)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 600 }}>
+                      Generated: {m.generated || 'Omitted'}
+                    </span>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </div>
-        )})}
+              </div>
+
+              {expandedId === id && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  style={{ padding: '1.25rem 1.5rem', backgroundColor: 'var(--bg-app)', borderTop: '1px solid var(--border-subtle)' }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                    <div>
+                      <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Original Extracted Fact
+                      </h4>
+                      <div style={{ fontSize: '0.875rem', lineHeight: 1.5, backgroundColor: '#ffffff', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                        {m.original || '(No fact registered)'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Generated Fact Result
+                      </h4>
+                      <div style={{ fontSize: '0.875rem', lineHeight: 1.5, backgroundColor: 'var(--error-bg)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--error-border)', color: 'var(--error)' }}>
+                        {m.generated || '(Fact was omitted from simplified text)'}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+            </div>
+          );
+        })}
       </div>
+
     </div>
   );
 };
